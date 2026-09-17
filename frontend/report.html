@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Report an Emergency — JALRAKSHYAK AI</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap');
+
+  :root{
+    --bg:#F4F1EC;
+    --card:#FFFFFF;
+    --ink:#1C2321;
+    --muted:#6B7570;
+    --line:#DED8CC;
+    --action:#B4442E;
+    --action-dark:#8F3423;
+    --field:#FBFAF7;
+    --success:#3E7A57;
+  }
+
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg);
+    color:var(--ink);
+    font-family:'IBM Plex Sans', -apple-system, sans-serif;
+    min-height:100vh;
+    display:flex;
+    justify-content:center;
+    -webkit-font-smoothing:antialiased;
+  }
+
+  /* Phone-frame illusion so this reads as "a different device" next to the dashboard */
+  .phone{
+    width:100%;
+    max-width:400px;
+    min-height:100vh;
+    background:var(--bg);
+    display:flex;
+    flex-direction:column;
+  }
+  @media (min-width:460px){
+    .phone{
+      min-height:calc(100vh - 48px);
+      margin:24px 0;
+      border-radius:28px;
+      box-shadow:0 0 0 8px #232323, 0 20px 50px rgba(0,0,0,0.35);
+      overflow:hidden;
+    }
+  }
+
+  .statusbar{
+    height:26px;
+    display:flex; align-items:center; justify-content:space-between;
+    padding:0 20px;
+    font-size:11px; color:var(--muted);
+    flex-shrink:0;
+  }
+
+  header{
+    padding:6px 22px 18px 22px;
+    border-bottom:1px solid var(--line);
+  }
+  header h1{font-size:20px; margin:0 0 3px 0; font-weight:700;}
+  header p{font-size:13px; color:var(--muted); margin:0;}
+
+  main{flex:1; padding:20px 22px 32px 22px; overflow-y:auto;}
+
+  .field{margin-bottom:16px;}
+  .field label{display:block; font-size:13px; font-weight:600; margin-bottom:7px;}
+  .field .hint{font-size:11.5px; color:var(--muted); margin-top:5px;}
+
+  input[type=text], input[type=number], select, textarea{
+    width:100%;
+    background:var(--field);
+    border:1.5px solid var(--line);
+    color:var(--ink);
+    border-radius:10px;
+    padding:13px 14px;
+    font-family:inherit;
+    font-size:15px;
+  }
+  input:focus, select:focus, textarea:focus{outline:none; border-color:var(--action);}
+  textarea{resize:vertical; min-height:64px;}
+
+  .use-location{
+    display:inline-flex; align-items:center; gap:6px;
+    font-size:12.5px; color:var(--action);
+    background:none; border:none; padding:6px 0 0 0;
+    cursor:pointer; font-weight:600;
+  }
+
+  .toggle-grid{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+  .toggle-item{
+    display:flex; align-items:center; gap:10px;
+    padding:13px 14px;
+    background:var(--field);
+    border:1.5px solid var(--line);
+    border-radius:10px;
+    font-size:13.5px;
+    font-weight:500;
+    cursor:pointer;
+  }
+  .toggle-item input{width:18px; height:18px; accent-color:var(--action); flex-shrink:0;}
+  .toggle-item.checked{border-color:var(--action); background:#FBEEE9;}
+
+  .voice-row{display:flex; gap:8px; align-items:flex-start;}
+  .voice-row textarea{flex:1;}
+  .mic-btn{
+    background:var(--action);
+    border:none;
+    border-radius:10px;
+    width:46px; height:46px;
+    flex-shrink:0;
+    cursor:pointer;
+    color:#fff;
+    font-size:18px;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .mic-btn.listening{background:var(--action-dark); box-shadow:0 0 0 4px rgba(180,68,46,0.2);}
+
+  .submit-btn{
+    width:100%;
+    padding:16px;
+    margin-top:8px;
+    background:var(--action);
+    color:#fff;
+    border:none;
+    border-radius:12px;
+    font-family:inherit;
+    font-size:15.5px;
+    font-weight:700;
+    cursor:pointer;
+  }
+  .submit-btn:active{background:var(--action-dark);}
+  .submit-btn:disabled{opacity:0.5;}
+
+  .success-screen{
+    display:none;
+    flex:1;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    text-align:center;
+    padding:40px 30px;
+  }
+  .success-screen.show{display:flex;}
+  .success-icon{
+    width:64px; height:64px;
+    border-radius:50%;
+    background:var(--success);
+    color:#fff;
+    display:flex; align-items:center; justify-content:center;
+    font-size:30px;
+    margin-bottom:18px;
+  }
+  .success-screen h2{font-size:19px; margin:0 0 8px 0;}
+  .success-screen p{font-size:13.5px; color:var(--muted); line-height:1.5; margin:0 0 24px 0;}
+  .success-screen button{
+    background:none; border:1.5px solid var(--line); color:var(--ink);
+    padding:11px 20px; border-radius:10px; font-family:inherit; font-size:13.5px;
+    cursor:pointer; font-weight:600;
+  }
+
+  .dispatch-card{
+    width:100%;
+    background:#fff;
+    border:1.5px solid var(--line);
+    border-radius:12px;
+    padding:16px 18px;
+    margin-bottom:22px;
+    text-align:left;
+  }
+  .dispatch-row{font-size:13px; margin-bottom:8px;}
+  .dispatch-row:last-child{margin-bottom:0;}
+  .dispatch-row b{font-weight:700;}
+  .dispatch-msg{
+    font-size:12.5px;
+    background:#F4F1EC;
+    border-radius:8px;
+    padding:9px 11px;
+    margin-top:8px;
+    color:var(--ink);
+  }
+  .pulse-dot{
+    display:inline-block; width:8px; height:8px; border-radius:50%;
+    background:var(--action);
+    animation:pulse 1.4s infinite;
+    margin-right:6px;
+  }
+  @keyframes pulse{
+    0%{opacity:1;} 50%{opacity:0.3;} 100%{opacity:1;}
+  }
+
+  .offline-note{
+    display:none;
+    font-size:12px;
+    background:#FBEEE9;
+    border:1px solid var(--action);
+    color:var(--action-dark);
+    padding:9px 12px;
+    border-radius:8px;
+    margin-bottom:14px;
+  }
+  .offline-note.show{display:block;}
+
+  .conn-strip{
+    display:flex; align-items:center; justify-content:center; gap:6px;
+    font-size:11px; color:var(--muted);
+    padding:8px 0 0 0;
+    cursor:pointer;
+  }
+  .conn-dot{width:6px; height:6px; border-radius:50%; background:var(--success);}
+  .conn-dot.off{background:var(--action);}
+</style>
+</head>
+<body>
+
+<div class="phone">
+  <div class="statusbar">
+    <span>9:41</span>
+    <span>Kathmandu, Nepal</span>
+  </div>
+
+  <header>
+    <h1>Report an Emergency</h1>
+    <p>JALRAKSHYAK AI — takes under a minute</p>
+  </header>
+
+  <main id="formView">
+    <div class="offline-note" id="offlineNote">No connection — your report will be saved and sent automatically once you're back online.</div>
+
+    <div class="field">
+      <label>What's happening and where?</label>
+      <input type="text" id="f_location" placeholder="e.g. Near Thapathali, Bagmati riverbank">
+      <button class="use-location" onclick="useMyLocation()">📍 Use my current location</button>
+    </div>
+
+    <div class="field">
+      <label>Type of disaster</label>
+      <select id="f_disaster">
+        <option value="flood">Flood</option>
+        <option value="landslide">Landslide</option>
+        <option value="earthquake">Earthquake</option>
+        <option value="fire">Fire</option>
+        <option value="other">Other</option>
+      </select>
+    </div>
+
+    <div class="field">
+      <label>How many people?</label>
+      <input type="number" min="1" id="f_victims" value="1">
+    </div>
+
+    <div class="field">
+      <label>Is anyone...</label>
+      <div class="toggle-grid">
+        <label class="toggle-item" data-for="f_injuries"><input type="checkbox" id="f_injuries" onchange="syncToggle(this)"> Injured</label>
+        <label class="toggle-item" data-for="f_children"><input type="checkbox" id="f_children" onchange="syncToggle(this)"> A child</label>
+        <label class="toggle-item" data-for="f_trapped"><input type="checkbox" id="f_trapped" onchange="syncToggle(this)"> Trapped</label>
+        <label class="toggle-item" data-for="f_water"><input type="checkbox" id="f_water" onchange="syncToggle(this)"> Water rising</label>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Anything else? (optional)</label>
+      <div class="voice-row">
+        <textarea id="f_notes" placeholder="Type or use the mic"></textarea>
+        <button class="mic-btn" id="micBtn" onclick="toggleVoice()">🎤</button>
+      </div>
+      <div class="hint">Voice works best in English right now — Nepali and Maithili are experimental.</div>
+    </div>
+
+    <button class="submit-btn" id="submitBtn" onclick="submitReport()">Send Report</button>
+
+    <div class="conn-strip" onclick="toggleConnectivity()">
+      <span class="conn-dot" id="connDot"></span>
+      <span id="connLabel">Connected — tap to simulate offline</span>
+    </div>
+  </main>
+
+  <div class="success-screen" id="successView">
+    <div class="success-icon" id="successIcon">✓</div>
+    <h2 id="successTitle">Report sent</h2>
+    <p id="successText">Your report has reached the command center and is being reviewed right now.</p>
+    <div class="dispatch-card" id="dispatchCard" style="display:none;"></div>
+    <button onclick="resetForm()">Send another report</button>
+  </div>
+</div>
+
+<script>
+const API_BASE = "http://127.0.0.1:8000";
+const QUEUE_KEY = "jalrakshyak_offline_queue";
+let isOnline = true;
+let recognizing = false;
+
+function syncToggle(input){
+  input.closest(".toggle-item").classList.toggle("checked", input.checked);
+}
+
+function useMyLocation(){
+  const loc = document.getElementById("f_location");
+  if(!navigator.geolocation){
+    loc.value = "Kathmandu, Nepal";
+    return;
+  }
+  navigator.geolocation.getCurrentPosition(
+    pos => {
+      window._lat = pos.coords.latitude;
+      window._lng = pos.coords.longitude;
+      loc.value = loc.value || "Current location";
+    },
+    () => { loc.value = loc.value || "Kathmandu, Nepal"; }
+  );
+}
+
+function toggleConnectivity(){
+  isOnline = !isOnline;
+  document.getElementById("connDot").classList.toggle("off", !isOnline);
+  document.getElementById("connLabel").textContent = isOnline
+    ? "Connected — tap to simulate offline"
+    : "Offline — tap to reconnect";
+  document.getElementById("offlineNote").classList.toggle("show", !isOnline);
+  if(isOnline) flushQueue();
+}
+
+function getQueue(){
+  try{ return JSON.parse(localStorage.getItem(QUEUE_KEY) || "[]"); } catch{ return []; }
+}
+function setQueue(q){ localStorage.setItem(QUEUE_KEY, JSON.stringify(q)); }
+
+async function flushQueue(){
+  const q = getQueue();
+  if(q.length === 0) return;
+  const remaining = [];
+  for(const payload of q){
+    try{
+      const res = await fetch(`${API_BASE}/reports`, {
+        method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(payload)
+      });
+      if(!res.ok) throw new Error();
+    }catch(e){ remaining.push(payload); }
+  }
+  setQueue(remaining);
+}
+
+function toggleVoice(){
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if(!SpeechRecognition){ alert("Voice input isn't supported in this browser. Try Chrome."); return; }
+  if(recognizing) return;
+  const micBtn = document.getElementById("micBtn");
+  const notes = document.getElementById("f_notes");
+  const recognition = new SpeechRecognition();
+  recognition.lang = "en-US";
+  recognition.interimResults = false;
+  recognition.onstart = () => { recognizing = true; micBtn.classList.add("listening"); };
+  recognition.onend = () => { recognizing = false; micBtn.classList.remove("listening"); };
+  recognition.onerror = () => { recognizing = false; micBtn.classList.remove("listening"); };
+  recognition.onresult = (e) => {
+    const text = e.results[0][0].transcript;
+    notes.value = notes.value ? `${notes.value} ${text}` : text;
+  };
+  recognition.start();
+}
+
+let pollTimer = null;
+
+async function submitReport(){
+  const btn = document.getElementById("submitBtn");
+  btn.disabled = true;
+  btn.textContent = "Sending...";
+
+  const payload = {
+    location_label: document.getElementById("f_location").value || "Unnamed location",
+    lat: window._lat || 27.6944,
+    lng: window._lng || 85.3197,
+    disaster_type: document.getElementById("f_disaster").value,
+    channel: "App",
+    victim_count: parseInt(document.getElementById("f_victims").value) || 1,
+    injuries: document.getElementById("f_injuries").checked,
+    children_present: document.getElementById("f_children").checked,
+    trapped: document.getElementById("f_trapped").checked,
+    water_rising: document.getElementById("f_water").checked,
+    notes: document.getElementById("f_notes").value
+  };
+
+  if(!isOnline){
+    const q = getQueue(); q.push(payload); setQueue(q);
+    showSuccess(null);
+    return;
+  }
+
+  let reportId = null;
+  try{
+    const res = await fetch(`${API_BASE}/reports`, {
+      method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(payload)
+    });
+    if(!res.ok) throw new Error();
+    const data = await res.json();
+    reportId = data.id;
+  }catch(e){
+    const q = getQueue(); q.push(payload); setQueue(q);
+  }
+  showSuccess(reportId);
+}
+
+function showSuccess(reportId){
+  document.getElementById("formView").style.display = "none";
+  document.getElementById("successView").classList.add("show");
+
+  if(!reportId){
+    // Queued offline — nothing to poll yet
+    document.getElementById("successIcon").textContent = "✓";
+    document.getElementById("successTitle").textContent = "Report saved";
+    document.getElementById("successText").textContent = "You're offline — this will be sent automatically once you're back online.";
+    document.getElementById("dispatchCard").style.display = "none";
+    return;
+  }
+
+  renderWaiting();
+  pollReportStatus(reportId);
+}
+
+function renderWaiting(){
+  document.getElementById("successIcon").textContent = "✓";
+  document.getElementById("successTitle").textContent = "Report sent";
+  document.getElementById("successText").innerHTML = `<span class="pulse-dot"></span>Waiting for the command center to respond...`;
+  document.getElementById("dispatchCard").style.display = "none";
+}
+
+function pollReportStatus(reportId){
+  if(pollTimer) clearInterval(pollTimer);
+  pollTimer = setInterval(async () => {
+    try{
+      const res = await fetch(`${API_BASE}/reports/${reportId}`);
+      if(!res.ok) return;
+      const report = await res.json();
+      if(report.status !== "SOS"){
+        renderDispatched(report);
+        clearInterval(pollTimer);
+      }
+    }catch(e){ /* keep trying silently */ }
+  }, 3000);
+}
+
+function renderDispatched(report){
+  document.getElementById("successTitle").textContent = "Help is on the way";
+  document.getElementById("successText").textContent = "The command center has responded to your report:";
+
+  const card = document.getElementById("dispatchCard");
+  card.style.display = "block";
+
+  const u = report.assigned_unit;
+  const unitLine = u
+    ? `<div class="dispatch-row">Dispatched: <b>${u.name}</b> (${u.type.replace('_',' ')})</div>`
+    : `<div class="dispatch-row">A response team has been notified.</div>`;
+
+  const msgLine = report.commander_message
+    ? `<div class="dispatch-msg">"${report.commander_message}"</div>`
+    : "";
+
+  card.innerHTML = `
+    <div class="dispatch-row">Status: <b>${report.status}</b></div>
+    ${unitLine}
+    ${msgLine}
+  `;
+}
+
+function resetForm(){
+  if(pollTimer) clearInterval(pollTimer);
+  document.getElementById("successView").classList.remove("show");
+  document.getElementById("formView").style.display = "block";
+  document.getElementById("submitBtn").disabled = false;
+  document.getElementById("submitBtn").textContent = "Send Report";
+  document.getElementById("f_location").value = "";
+  document.getElementById("f_victims").value = 1;
+  ["f_injuries","f_children","f_trapped","f_water"].forEach(id=>{
+    const el = document.getElementById(id);
+    el.checked = false;
+    syncToggle(el);
+  });
+  document.getElementById("f_notes").value = "";
+}
+</script>
+
+</body>
+</html>
