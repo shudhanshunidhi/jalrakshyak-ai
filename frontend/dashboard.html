@@ -1,0 +1,826 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JALRAKSHYAK AI — Command Dashboard</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+
+  :root{
+    --bg-base:#17151A;
+    --bg-panel:#201D23;
+    --bg-raised:#2A262E;
+    --border:#3A353E;
+    --text-primary:#EDE9E2;
+    --text-muted:#9C968D;
+    --critical:#C0453A;
+    --high:#D98E2B;
+    --moderate:#4A7A96;
+    --accent:#9C7A3C;
+    --accent-dim:#6B5429;
+    --danger:#A93226;
+    --warn:#D98E2B;
+  }
+
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg-base);
+    color:var(--text-primary);
+    font-family:'IBM Plex Sans', -apple-system, sans-serif;
+    min-height:100vh;
+    -webkit-font-smoothing:antialiased;
+  }
+  .mono{font-family:'IBM Plex Mono', monospace;}
+
+  header{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:18px 28px; border-bottom:1px solid var(--border);
+    background:var(--bg-panel); flex-wrap:wrap; gap:12px;
+  }
+  .brand{display:flex; align-items:baseline; gap:10px;}
+  .brand h1{font-size:19px; font-weight:700; margin:0; letter-spacing:0.2px;}
+  .brand span{font-size:12px; color:var(--text-muted);}
+  .header-controls{display:flex; align-items:center; gap:8px; flex-wrap:wrap;}
+  .header-divider{width:1px; height:22px; background:var(--border); margin:0 4px;}
+
+  .summary-strip{
+    display:flex; align-items:center; gap:22px; flex-wrap:wrap;
+    padding:11px 28px;
+    background:var(--bg-base);
+    border-bottom:1px solid var(--border);
+    font-size:13px; color:var(--text-primary);
+  }
+  .summary-item{display:flex; align-items:center; gap:7px; font-weight:500;}
+  .summary-dot{width:8px; height:8px; border-radius:50%; flex-shrink:0;}
+  .summary-sep{width:1px; height:16px; background:var(--border);}
+
+  button.btn, a.btn{
+    font-family:inherit; font-size:13px; font-weight:500;
+    padding:8px 14px; border-radius:3px; border:1px solid var(--border);
+    background:var(--bg-raised); color:var(--text-primary); cursor:pointer;
+  }
+  button.btn:hover{border-color:var(--accent);}
+  button.btn.primary{background:var(--accent-dim); border-color:var(--accent); color:#fff;}
+  button.btn.primary:hover{background:var(--accent);}
+  button.btn:disabled{opacity:0.4; cursor:not-allowed;}
+  button.btn.small{font-size:11.5px; padding:5px 9px;}
+
+  .layout{
+    display:grid; grid-template-columns:1fr 360px; gap:1px;
+    background:var(--border); min-height:calc(100vh - 61px);
+  }
+  @media (max-width:900px){ .layout{grid-template-columns:1fr;} }
+  .col{background:var(--bg-base); padding:20px; overflow-y:auto;}
+
+  .panel-head{display:flex; align-items:center; justify-content:space-between; margin-bottom:14px;}
+  h2.panel-title{
+    font-size:14.5px; font-weight:600; color:var(--text-primary); margin:0;
+  }
+
+  /* ---------- Incident cards ---------- */
+  .incident-card{
+    background:var(--bg-panel); border:1px solid var(--border);
+    border-left:4px solid var(--moderate); border-radius:3px;
+    padding:14px 16px; margin-bottom:12px;
+  }
+  .incident-card.CRITICAL{border-left-color:var(--critical);}
+  .incident-card.HIGH{border-left-color:var(--high);}
+  .incident-card.MODERATE{border-left-color:var(--moderate);}
+
+  .ic-top{display:flex; justify-content:space-between; align-items:flex-start; gap:10px;}
+  .ic-loc{font-size:14.5px; font-weight:600;}
+  .ic-meta{font-size:12.5px; color:var(--text-muted); margin-top:3px;}
+  .sev-badge{font-size:11px; font-weight:600; padding:3px 8px; border-radius:2px; white-space:nowrap; letter-spacing:0.3px;}
+  .sev-badge.CRITICAL{background:rgba(192,69,58,0.18); color:var(--critical);}
+  .sev-badge.HIGH{background:rgba(217,142,43,0.18); color:var(--high);}
+  .sev-badge.MODERATE{background:rgba(74,122,150,0.18); color:var(--moderate);}
+
+  .ic-reason{font-size:13px; color:#D4CFC5; margin:10px 0; line-height:1.5;}
+  .ic-unit{font-size:12.5px; color:var(--text-muted); margin-bottom:4px;}
+  .ic-unit b{color:var(--text-primary); font-weight:500;}
+  .ic-msg{
+    font-size:12px; color:var(--accent); background:rgba(156,122,60,0.1);
+    border:1px solid var(--accent-dim); border-radius:3px; padding:7px 10px; margin:8px 0;
+  }
+  .dup-banner{
+    font-size:12px; color:#E8B368; background:rgba(217,142,43,0.1);
+    border:1px solid var(--warn); border-radius:3px; padding:8px 10px; margin:10px 0;
+    display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;
+  }
+
+  .ic-status-row{display:flex; align-items:center; gap:8px; margin:10px 0;}
+  .status-pill{font-size:11px; padding:3px 9px; border-radius:10px; background:var(--bg-raised); border:1px solid var(--border);}
+  .status-pill.Rejected{border-color:var(--danger); color:#E3A89E;}
+
+  .ic-actions{display:flex; gap:8px; flex-wrap:wrap;}
+  .ic-actions button{font-size:12px; padding:6px 11px;}
+  .ic-actions button.reject{border-color:var(--danger); color:#E3A89E;}
+  .ic-actions button.approve{background:var(--accent-dim); border-color:var(--accent); color:#fff;}
+
+  .lifecycle-select{
+    font-family:inherit; font-size:12px; background:var(--bg-raised); color:var(--text-primary);
+    border:1px solid var(--border); border-radius:3px; padding:5px 8px;
+  }
+
+  .empty-state{color:var(--text-muted); font-size:13px; padding:20px 0;}
+
+  /* ---------- Units / Shelters / Hospitals panel ---------- */
+  .res-item{padding:9px 0; border-bottom:1px solid var(--border); font-size:13px;}
+  .res-item:last-child{border-bottom:none;}
+  .res-top{display:flex; justify-content:space-between; align-items:flex-start; gap:8px;}
+  .res-name{font-weight:500;}
+  .res-sub{font-size:12px; color:var(--text-muted); margin-top:2px;}
+  .avail-dot{width:8px; height:8px; border-radius:50%; display:inline-block; margin-right:6px; flex-shrink:0;}
+  .avail-dot.yes{background:var(--accent);}
+  .avail-dot.no{background:var(--danger);}
+  .avail-dot.warn{background:var(--warn);}
+
+  .cond-badge{font-size:10px; font-weight:600; text-transform:uppercase; padding:2px 6px; border-radius:2px; margin-left:6px;}
+
+  .dispatch-badge{font-size:10px; font-weight:600; text-transform:uppercase; padding:2px 7px; border-radius:2px; margin-left:6px;}
+  .dispatch-badge.Assigned{background:rgba(156,150,141,0.18); color:var(--text-muted);}
+  .dispatch-badge.En_Route{background:rgba(217,142,43,0.18); color:var(--warn);}
+  .dispatch-badge.Transporting{background:rgba(74,122,150,0.22); color:var(--moderate);}
+  .dispatch-badge.Complete{background:rgba(156,122,60,0.22); color:var(--accent);}
+  .cond-badge.operational{background:rgba(156,122,60,0.15); color:var(--accent);}
+  .cond-badge.under_maintenance{background:rgba(217,142,43,0.15); color:var(--warn);}
+  .cond-badge.out_of_service{background:rgba(192,69,58,0.15); color:var(--critical);}
+
+  .gps-line{font-size:11.5px; color:var(--text-muted); margin-top:3px;}
+  .res-btns{display:flex; gap:5px; flex-shrink:0;}
+  .icon-btn{
+    background:none; border:1px solid var(--border); color:var(--text-muted);
+    border-radius:3px; width:24px; height:24px; cursor:pointer; font-size:12px;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .icon-btn:hover{border-color:var(--accent); color:var(--accent);}
+  .icon-btn.danger:hover{border-color:var(--danger); color:#E3A89E;}
+
+  .shelter-bar-track{height:6px; background:var(--bg-raised); border-radius:3px; overflow:hidden; margin-top:6px;}
+  .shelter-bar-fill{height:100%; background:var(--moderate);}
+  .shelter-bar-fill.full{background:var(--critical);}
+  .shelter-nums{font-size:11px; color:var(--text-muted); margin-top:4px;}
+
+  .section-gap{margin-top:26px;}
+
+  /* ---------- Modal ---------- */
+  .modal-overlay{position:fixed; inset:0; background:rgba(5,8,12,0.7); display:flex; align-items:center; justify-content:center; z-index:100;}
+  .modal-overlay.hidden{display:none;}
+  .modal{background:var(--bg-panel); border:1px solid var(--border); border-radius:6px; width:100%; max-width:400px; padding:20px; max-height:85vh; overflow-y:auto;}
+  .modal h3{margin:0 0 16px 0; font-size:15px;}
+  .modal-field{margin-bottom:12px;}
+  .modal-field label{display:block; font-size:12px; color:var(--text-muted); margin-bottom:5px;}
+  .modal-field input[type=text], .modal-field input[type=number], .modal-field select, .modal-field textarea{
+    width:100%; background:var(--bg-raised); border:1px solid var(--border); color:var(--text-primary);
+    border-radius:3px; padding:8px 10px; font-family:inherit; font-size:13px;
+  }
+  .modal-field textarea{min-height:60px; resize:vertical;}
+  .modal-checkbox{display:flex; align-items:center; gap:8px; font-size:13px;}
+  .modal-checkbox input{width:15px; height:15px; accent-color:var(--accent);}
+  .modal-actions{display:flex; justify-content:flex-end; gap:8px; margin-top:16px;}
+
+  .unit-check-list{display:flex; flex-direction:column; gap:6px; max-height:220px; overflow-y:auto;}
+  .unit-check-item{
+    display:flex; align-items:center; gap:9px; font-size:13px;
+    padding:8px 10px; background:var(--bg-raised); border:1px solid var(--border); border-radius:3px;
+  }
+  .unit-check-item input{width:15px; height:15px; accent-color:var(--accent); flex-shrink:0;}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <h1>JALRAKSHYAK AI</h1>
+    <span>Disaster Response Command Dashboard</span>
+  </div>
+  <div class="header-controls">
+    <select onchange="if(this.value) window.open(this.value,'_blank'); this.selectedIndex=0;" style="font-family:inherit; font-size:13px; padding:8px 10px; border-radius:3px; border:1px solid var(--border); background:var(--bg-raised); color:var(--text-primary);">
+      <option value="">Open other view ↗</option>
+      <option value="report.html">Citizen report view</option>
+      <option value="driver.html">Unit / driver view</option>
+      <option value="hospital.html">Hospital view</option>
+      <option value="shelter.html">Shelter view</option>
+    </select>
+    <div class="header-divider"></div>
+    <a class="btn" href="#" onclick="exportRecords(null); return false;" style="text-decoration:none; display:inline-flex; align-items:center;">⬇ Export all (.xlsx)</a>
+    <a class="btn" href="#" onclick="exportRecords('Rescued'); return false;" style="text-decoration:none; display:inline-flex; align-items:center;">⬇ Export rescued only</a>
+    <div class="header-divider"></div>
+    <button class="btn" id="autoSmsBtn" onclick="toggleAutoSms()">Auto-receive: OFF</button>
+    <button class="btn" onclick="simulateIncomingSMS()">Simulate one now</button>
+  </div>
+</header>
+
+<div class="summary-strip" id="summaryStrip">
+  <div class="summary-item"><span class="summary-dot" style="background:var(--critical);"></span><span id="countCritical">0</span> critical</div>
+  <div class="summary-item"><span class="summary-dot" style="background:var(--high);"></span><span id="countHigh">0</span> high</div>
+  <div class="summary-item"><span class="summary-dot" style="background:var(--moderate);"></span><span id="countModerate">0</span> moderate</div>
+  <div class="summary-sep"></div>
+  <div class="summary-item"><span id="countUnitsFree">0</span> units free of <span id="countUnitsTotal">0</span></div>
+</div>
+
+<div class="layout">
+
+  <div class="col">
+    <h2 class="panel-title">Active incidents — ranked by severity</h2>
+    <div id="incidentFeed" style="margin-top:14px;">
+      <div class="empty-state">No incidents yet. Submit a report to see it scored and matched here.</div>
+    </div>
+  </div>
+
+  <div class="col">
+    <div class="panel-head">
+      <h2 class="panel-title">Rescue units</h2>
+      <button class="btn small" onclick="openUnitCreateModal()">+ Add</button>
+    </div>
+    <div id="unitsList"><div class="empty-state">Loading…</div></div>
+
+    <div class="section-gap"></div>
+    <div class="panel-head">
+      <h2 class="panel-title">Hospitals</h2>
+      <button class="btn small" onclick="openHospitalCreateModal()">+ Add</button>
+    </div>
+    <div id="hospitalsList"><div class="empty-state">Loading…</div></div>
+
+    <div class="section-gap"></div>
+    <div class="panel-head">
+      <h2 class="panel-title">Shelters</h2>
+      <button class="btn small" onclick="openShelterCreateModal()">+ Add</button>
+    </div>
+    <div id="sheltersList"><div class="empty-state">Loading…</div></div>
+  </div>
+
+</div>
+
+<div class="modal-overlay hidden" id="modalOverlay">
+  <div class="modal">
+    <h3 id="modalTitle">Edit</h3>
+    <div id="modalBody"></div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal()">Cancel</button>
+      <button class="btn primary" onclick="submitModal()">Save</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const API_BASE = "http://127.0.0.1:8000";
+
+// ============================================================
+// Generic single-field modal engine (units/hospitals/shelters edit+create,
+// approve/reject message prompts)
+// ============================================================
+let _modalFields = [];
+let _modalOnSubmit = null;
+let _modalCustomBody = null; // used for the multi-unit checkbox picker
+
+function openModal(title, fields, onSubmit){
+  _modalFields = fields;
+  _modalOnSubmit = onSubmit;
+  _modalCustomBody = null;
+  document.getElementById("modalTitle").textContent = title;
+  document.getElementById("modalBody").innerHTML = fields.map(f => {
+    if(f.type === "checkbox"){
+      return `<div class="modal-field"><label class="modal-checkbox">
+        <input type="checkbox" id="modal_${f.key}" ${f.value ? "checked":""}> ${f.label}
+      </label></div>`;
+    }
+    if(f.type === "select"){
+      const noneOption = f.allowNone ? `<option value="">None</option>` : "";
+      return `<div class="modal-field"><label>${f.label}</label>
+        <select id="modal_${f.key}">
+          ${noneOption}
+          ${f.options.map(o => {
+            const val = (typeof o === "object") ? o.value : o;
+            const label = (typeof o === "object") ? o.label : o.replace(/_/g,' ');
+            return `<option value="${val}" ${val===f.value?"selected":""}>${label}</option>`;
+          }).join("")}
+        </select></div>`;
+    }
+    if(f.type === "textarea"){
+      return `<div class="modal-field"><label>${f.label}</label>
+        <textarea id="modal_${f.key}" placeholder="${f.placeholder||''}">${f.value||''}</textarea></div>`;
+    }
+    return `<div class="modal-field"><label>${f.label}</label>
+      <input type="${f.type}" id="modal_${f.key}" value="${f.value ?? ''}" ${f.step?`step="${f.step}"`:''}></div>`;
+  }).join("");
+  document.getElementById("modalOverlay").classList.remove("hidden");
+}
+
+// Special-case modal for picking MULTIPLE units (checkboxes, not a select)
+function openMultiUnitModal(title, units, onSubmit, extraFields, preCheckedIds){
+  _modalOnSubmit = null;
+  _modalCustomBody = { onSubmit, unitIds: units.map(u => u.id), extraFields: extraFields || [] };
+  document.getElementById("modalTitle").textContent = title;
+
+  const checked = new Set(preCheckedIds || []);
+  const checklist = `<div class="unit-check-list">${units.map(u => `
+    <label class="unit-check-item">
+      <input type="checkbox" class="unit-pick" value="${u.id}" ${checked.has(u.id) ? "checked" : ""}>
+      ${u.name} (${u.type.replace('_',' ')})
+    </label>`).join("")}</div>`;
+
+  const extras = (extraFields || []).map(f => {
+    if(f.type === "select"){
+      return `
+        <div class="modal-field" style="margin-top:12px;">
+          <label>${f.label}</label>
+          <select id="modal_${f.key}">
+            <option value="">None</option>
+            ${f.options.map(o => `<option value="${o.value}">${o.label}</option>`).join("")}
+          </select>
+        </div>`;
+    }
+    return `
+      <div class="modal-field" style="margin-top:12px;">
+        <label>${f.label}</label>
+        <textarea id="modal_${f.key}" placeholder="${f.placeholder||''}"></textarea>
+      </div>`;
+  }).join("");
+
+  document.getElementById("modalBody").innerHTML = `
+    <div class="modal-field"><label>Select unit(s) to assign</label>${checklist}</div>
+    ${extras}
+  `;
+  document.getElementById("modalOverlay").classList.remove("hidden");
+}
+
+function closeModal(){
+  document.getElementById("modalOverlay").classList.add("hidden");
+  _modalFields = [];
+  _modalOnSubmit = null;
+  _modalCustomBody = null;
+}
+
+function submitModal(){
+  if(_modalCustomBody){
+    const checked = Array.from(document.querySelectorAll(".unit-pick:checked")).map(el => el.value);
+    const data = { unit_ids: checked };
+    for(const f of _modalCustomBody.extraFields){
+      data[f.key] = document.getElementById(`modal_${f.key}`).value;
+    }
+    if(checked.length === 0){ alert("Select at least one unit."); return; }
+    _modalCustomBody.onSubmit(data);
+    closeModal();
+    return;
+  }
+
+  const data = {};
+  for(const f of _modalFields){
+    const el = document.getElementById(`modal_${f.key}`);
+    if(f.type === "checkbox") data[f.key] = el.checked;
+    else if(f.type === "number") data[f.key] = el.value === "" ? null : parseFloat(el.value);
+    else data[f.key] = el.value;
+  }
+  if(_modalOnSubmit) _modalOnSubmit(data);
+  closeModal();
+}
+
+// ============================================================
+// Export records to Excel — the "data keeper" record for handing to
+// municipal authorities, donors, or press.
+// ============================================================
+function exportRecords(status){
+  const url = status ? `${API_BASE}/reports/export?status=${encodeURIComponent(status)}` : `${API_BASE}/reports/export`;
+  window.open(url, "_blank");
+}
+
+// ============================================================
+// Simulated incoming SMS — manual trigger, or auto-receive mode so new
+// reports appear on their own without anyone clicking anything.
+// ============================================================
+const SMS_SAMPLES = [
+  {location_label:"Balkhu, near Bagmati bank", lat:27.6890, lng:85.3020, disaster_type:"flood", channel:"SMS", victim_count:4, injured_count:2, children_count:0, trapped_count:3, water_rising:true, notes:"SMS relay: family calling for help, water entering house"},
+  {location_label:"Koteshwor school compound", lat:27.6789, lng:85.3487, disaster_type:"flood", channel:"SMS", victim_count:9, injured_count:0, children_count:6, trapped_count:0, water_rising:true, notes:"SMS relay: villagers gathered, water rising near compound"},
+  {location_label:"Kalanki underpass", lat:27.6939, lng:85.2810, disaster_type:"flood", channel:"SMS", victim_count:2, injured_count:2, children_count:0, trapped_count:0, water_rising:true, notes:"SMS relay: motorbike rider stuck, water rising fast"},
+  {location_label:"Sankhamul, riverside settlement", lat:27.6870, lng:85.3260, disaster_type:"flood", channel:"SMS", victim_count:7, injured_count:1, children_count:2, trapped_count:5, water_rising:true, notes:"SMS relay: several families trapped on rooftop"},
+  {location_label:"Gaushala, near ring road", lat:27.7080, lng:85.3450, disaster_type:"flood", channel:"Radio", victim_count:3, injured_count:3, children_count:0, trapped_count:0, water_rising:false, notes:"Radio relay: injured pedestrian, road flooding nearby"},
+];
+
+function simulateIncomingSMS(){
+  const pick = SMS_SAMPLES[Math.floor(Math.random()*SMS_SAMPLES.length)];
+  fetch(`${API_BASE}/reports`, {
+    method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(pick)
+  }).then(()=>loadIncidents());
+}
+
+let autoSmsTimer = null;
+function toggleAutoSms(){
+  const btn = document.getElementById("autoSmsBtn");
+  if(autoSmsTimer){
+    clearInterval(autoSmsTimer);
+    autoSmsTimer = null;
+    btn.textContent = "Auto-receive: OFF";
+    btn.classList.remove("primary");
+  } else {
+    simulateIncomingSMS(); // fire one immediately
+    autoSmsTimer = setInterval(simulateIncomingSMS, 20000);
+    btn.textContent = "Auto-receive: ON";
+    btn.classList.add("primary");
+  }
+}
+
+// ============================================================
+// Incident feed
+// ============================================================
+async function loadIncidents(){
+  try{
+    const res = await fetch(`${API_BASE}/incidents`);
+    renderIncidents(await res.json());
+  }catch(e){ /* leave feed as-is */ }
+}
+
+function renderIncidents(incidents){
+  const feed = document.getElementById("incidentFeed");
+  if(incidents.length === 0){
+    feed.innerHTML = `<div class="empty-state">No incidents yet. Submit a report to see it scored and matched here.</div>`;
+  } else {
+    feed.innerHTML = incidents.map(renderCard).join("");
+  }
+
+  const active = incidents.filter(i => i.status !== "Rescued" && i.status !== "Rejected");
+  document.getElementById("countCritical").textContent = active.filter(i => i.severity === "CRITICAL").length;
+  document.getElementById("countHigh").textContent = active.filter(i => i.severity === "HIGH").length;
+  document.getElementById("countModerate").textContent = active.filter(i => i.severity === "MODERATE").length;
+}
+
+function renderCard(inc){
+  const time = new Date(inc.created_at).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+
+  const unitsLine = inc.dispatches.length > 0
+    ? inc.dispatches.map(d => `
+        <div class="ic-unit">
+          <b>${d.unit.name}</b> (${d.unit.type.replace('_',' ')})
+          <span class="dispatch-badge ${d.status.replace(' ','_')}">${d.status}</span>
+          ${d.headcount != null ? ` · bringing ${d.headcount}` : ''}
+        </div>
+      `).join("")
+    : `<div class="ic-unit">No unit currently assigned</div>`;
+
+  const destLines = [];
+  if(inc.destination_hospital) destLines.push(`<div class="ic-unit">→ Hospital: <b>${inc.destination_hospital.name}</b></div>`);
+  if(inc.destination_shelter) destLines.push(`<div class="ic-unit">→ Shelter: <b>${inc.destination_shelter.name}</b></div>`);
+
+  const dupBanner = inc.duplicate_of
+    ? `<div class="dup-banner">
+         <span>⚠ Likely same incident as "${inc.duplicate_of.location_label}" — no unit auto-assigned.</span>
+         <button class="btn small" onclick="dispatchAnyway('${inc.id}')">Treat as separate, assign unit</button>
+       </div>`
+    : "";
+
+  const msgLine = inc.commander_message
+    ? `<div class="ic-msg">Sent to citizen: "${inc.commander_message}"</div>`
+    : "";
+
+  let actions;
+  if(inc.status === "SOS" && !inc.duplicate_of){
+    actions = `
+      <button class="approve" onclick="openApproveModal('${inc.id}')" ${inc.dispatches.length===0?'disabled':''}>Approve</button>
+      <button onclick="openModifyModal('${inc.id}')">Modify unit(s)</button>
+      <button onclick="openRejectModal('${inc.id}')" class="reject">Reject</button>
+    `;
+  } else if(inc.status === "Rejected"){
+    actions = `<button onclick="openModifyModal('${inc.id}')">Reconsider — assign unit(s)</button>`;
+  } else if(inc.duplicate_of){
+    actions = ``; // dispatch-anyway button in the banner handles this state
+  } else {
+    actions = `
+      <select class="lifecycle-select" onchange="updateStatus('${inc.id}', this.value)">
+        ${["SOS","Assigned","En Route","Rescued"].map(s =>
+          `<option value="${s}" ${s===inc.status ? "selected":""}>${s}</option>`
+        ).join("")}
+      </select>
+      <button onclick="openModifyModal('${inc.id}')">Modify unit(s)</button>
+    `;
+  }
+
+  return `
+    <div class="incident-card ${inc.severity}">
+      <div class="ic-top">
+        <div>
+          <div class="ic-loc">${inc.location_label}</div>
+          <div class="ic-meta">${time} · ${inc.channel} · ${inc.disaster_type}</div>
+        </div>
+        <span class="sev-badge ${inc.severity}">${inc.severity}</span>
+      </div>
+      <div class="ic-reason">${inc.severity_explanation}</div>
+      ${dupBanner}
+      ${unitsLine}
+      ${destLines.join("")}
+      ${msgLine}
+      <div class="ic-status-row"><span class="status-pill ${inc.status.replace(' ','_')}">${inc.status}</span></div>
+      <div class="ic-actions">${actions}</div>
+    </div>
+  `;
+}
+
+async function openApproveModal(id){
+  const [hRes, sRes] = await Promise.all([fetch(`${API_BASE}/hospitals`), fetch(`${API_BASE}/shelters`)]);
+  const hospitals = await hRes.json();
+  const shelters = await sRes.json();
+
+  openModal("Approve & notify citizen", [
+    {key:"message", label:"Message / advice to citizen (optional)", type:"textarea",
+     placeholder:"e.g. Boat dispatched, ETA 15 minutes. Move to higher ground if possible."},
+    {key:"hospital_id", label:"Route patients to hospital (optional)", type:"select", allowNone:true,
+     options: hospitals.map(h => ({value:h.id, label:h.name}))},
+    {key:"shelter_id", label:"Route evacuees to shelter (optional)", type:"select", allowNone:true,
+     options: shelters.map(s => ({value:s.id, label:s.name}))},
+  ], async (data) => {
+    await fetch(`${API_BASE}/incidents/${id}/approve`, {
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({
+        message: data.message || null,
+        hospital_id: data.hospital_id || null,
+        shelter_id: data.shelter_id || null,
+      })
+    });
+    loadIncidents(); loadUnits();
+  });
+}
+
+function openRejectModal(id){
+  openModal("Reject & notify citizen", [
+    {key:"message", label:"Reason / message to citizen (optional)", type:"textarea",
+     placeholder:"e.g. No unit currently available in your area — please move to higher ground and call again if the situation worsens."}
+  ], async (data) => {
+    await fetch(`${API_BASE}/incidents/${id}/reject`, {
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({message: data.message || null})
+    });
+    loadIncidents(); loadUnits();
+  });
+}
+
+async function openModifyModal(id){
+  const [uRes, hRes, sRes, rRes] = await Promise.all([
+    fetch(`${API_BASE}/units`), fetch(`${API_BASE}/hospitals`), fetch(`${API_BASE}/shelters`),
+    fetch(`${API_BASE}/reports/${id}`)
+  ]);
+  const units = await uRes.json();
+  const hospitals = await hRes.json();
+  const shelters = await sRes.json();
+  const report = await rRes.json();
+
+  // Units already dispatched to THIS report must stay selectable (and
+  // pre-checked) even though they show as "busy" — they're busy because
+  // of this exact incident, not because they're unavailable to it.
+  const currentUnitIds = report.dispatches.map(d => d.unit.id);
+  const usable = units.filter(u =>
+    (u.available && u.condition === "operational") || currentUnitIds.includes(u.id)
+  );
+  if(usable.length === 0){ alert("No operational, available units to assign."); return; }
+
+  openMultiUnitModal("Assign unit(s) to this incident", usable, async (data) => {
+    await fetch(`${API_BASE}/incidents/${id}/modify`, {
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({
+        unit_ids: data.unit_ids,
+        message: data.message || null,
+        hospital_id: data.hospital_id || null,
+        shelter_id: data.shelter_id || null,
+      })
+    });
+    loadIncidents(); loadUnits();
+  }, [
+    {key:"message", label:"Message / advice to citizen (optional)", placeholder:"e.g. Two units dispatched."},
+    {key:"hospital_id", label:"Route patients to hospital (optional)", type:"select", allowNone:true,
+     options: hospitals.map(h => ({value:h.id, label:h.name}))},
+    {key:"shelter_id", label:"Route evacuees to shelter (optional)", type:"select", allowNone:true,
+     options: shelters.map(s => ({value:s.id, label:s.name}))},
+  ], currentUnitIds);
+}
+
+async function dispatchAnyway(id){
+  await fetch(`${API_BASE}/incidents/${id}/dispatch-anyway`, {method:"POST"});
+  loadIncidents();
+}
+
+async function updateStatus(id, status){
+  await fetch(`${API_BASE}/incidents/${id}/status`, {
+    method:"PATCH", headers:{"Content-Type":"application/json"}, body: JSON.stringify({status})
+  });
+  loadIncidents(); loadUnits();
+}
+
+// ============================================================
+// Rescue units — list, edit, create, delete
+// ============================================================
+async function loadUnits(){
+  try{
+    const res = await fetch(`${API_BASE}/units`);
+    const units = await res.json();
+    document.getElementById("unitsList").innerHTML = units.map(u => {
+      const gpsAge = u.last_gps_update ? new Date(u.last_gps_update).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : "—";
+      const dotClass = u.condition !== "operational" ? "warn" : (u.available ? "yes" : "no");
+      return `
+        <div class="res-item">
+          <div class="res-top">
+            <div>
+              <span class="avail-dot ${dotClass}"></span>
+              <span class="res-name">${u.name}</span>
+              <span class="cond-badge ${u.condition}">${u.condition.replace(/_/g,' ')}</span>
+              <div class="res-sub">${u.type.replace('_',' ')} · ${u.available ? 'free':'busy'}</div>
+              <div class="gps-line mono">${u.lat.toFixed(4)}, ${u.lng.toFixed(4)} · ${gpsAge}</div>
+            </div>
+            <div class="res-btns">
+              <button class="icon-btn" onclick='openUnitEditModal(${JSON.stringify(u)})' title="Edit">✎</button>
+              <button class="icon-btn danger" onclick="deleteUnit('${u.id}','${u.name.replace(/'/g,"")}')" title="Delete">🗑</button>
+            </div>
+          </div>
+        </div>
+      `;
+    }).join("");
+
+    document.getElementById("countUnitsFree").textContent = units.filter(u => u.available && u.condition === "operational").length;
+    document.getElementById("countUnitsTotal").textContent = units.length;
+  }catch(e){
+    document.getElementById("unitsList").innerHTML = `<div class="empty-state">Can't reach backend.</div>`;
+  }
+}
+
+function openUnitEditModal(u){
+  openModal(`Edit ${u.name}`, [
+    {key:"name", label:"Name", type:"text", value:u.name},
+    {key:"type", label:"Type", type:"select", options:["boat","ambulance","relief_team"], value:u.type},
+    {key:"lat", label:"Latitude (GPS)", type:"number", step:"0.0001", value:u.lat},
+    {key:"lng", label:"Longitude (GPS)", type:"number", step:"0.0001", value:u.lng},
+    {key:"condition", label:"Condition", type:"select", options:["operational","under_maintenance","out_of_service"], value:u.condition},
+    {key:"available", label:"Currently free (not dispatched)", type:"checkbox", value:u.available},
+  ], async (data) => {
+    await fetch(`${API_BASE}/units/${u.id}`, {
+      method:"PATCH", headers:{"Content-Type":"application/json"}, body: JSON.stringify(data)
+    });
+    loadUnits();
+  });
+}
+
+function openUnitCreateModal(){
+  openModal("Add rescue unit", [
+    {key:"name", label:"Name", type:"text", value:""},
+    {key:"type", label:"Type", type:"select", options:["boat","ambulance","relief_team"], value:"boat"},
+    {key:"lat", label:"Latitude (GPS)", type:"number", step:"0.0001", value:"27.7172"},
+    {key:"lng", label:"Longitude (GPS)", type:"number", step:"0.0001", value:"85.3240"},
+    {key:"available", label:"Currently free", type:"checkbox", value:true},
+  ], async (data) => {
+    await fetch(`${API_BASE}/units`, {
+      method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(data)
+    });
+    loadUnits();
+  });
+}
+
+async function deleteUnit(id, name){
+  if(!confirm(`Remove ${name} from the fleet? This can't be undone.`)) return;
+  await fetch(`${API_BASE}/units/${id}`, {method:"DELETE"});
+  loadUnits();
+}
+
+// ============================================================
+// Hospitals — list, edit, create, delete
+// ============================================================
+async function loadHospitals(){
+  try{
+    const res = await fetch(`${API_BASE}/hospitals`);
+    const hospitals = await res.json();
+    document.getElementById("hospitalsList").innerHTML = hospitals.map(h => {
+      const dotClass = !h.operational ? "no" : (h.available_beds > 0 ? "yes" : "warn");
+      return `
+        <div class="res-item">
+          <div class="res-top">
+            <div>
+              <span class="avail-dot ${dotClass}"></span>
+              <span class="res-name">${h.name}</span>
+              <div class="res-sub">${h.available_beds} / ${h.total_beds} beds free ${h.has_er ? '· has ER':''} ${!h.operational ? '· CLOSED':''}</div>
+            </div>
+            <div class="res-btns">
+              <button class="icon-btn" onclick='openHospitalEditModal(${JSON.stringify(h)})' title="Edit">✎</button>
+              <button class="icon-btn danger" onclick="deleteHospital('${h.id}','${h.name.replace(/'/g,"")}')" title="Delete">🗑</button>
+            </div>
+          </div>
+        </div>
+      `;
+    }).join("");
+  }catch(e){
+    document.getElementById("hospitalsList").innerHTML = `<div class="empty-state">Can't reach backend.</div>`;
+  }
+}
+
+function openHospitalEditModal(h){
+  openModal(`Edit ${h.name}`, [
+    {key:"name", label:"Name", type:"text", value:h.name},
+    {key:"total_beds", label:"Total beds", type:"number", value:h.total_beds},
+    {key:"available_beds", label:"Available beds", type:"number", value:h.available_beds},
+    {key:"has_er", label:"Has emergency room", type:"checkbox", value:h.has_er},
+    {key:"operational", label:"Currently operational", type:"checkbox", value:h.operational},
+  ], async (data) => {
+    await fetch(`${API_BASE}/hospitals/${h.id}`, {
+      method:"PATCH", headers:{"Content-Type":"application/json"}, body: JSON.stringify(data)
+    });
+    loadHospitals();
+  });
+}
+
+function openHospitalCreateModal(){
+  openModal("Add hospital", [
+    {key:"name", label:"Name", type:"text", value:""},
+    {key:"lat", label:"Latitude", type:"number", step:"0.0001", value:"27.7172"},
+    {key:"lng", label:"Longitude", type:"number", step:"0.0001", value:"85.3240"},
+    {key:"total_beds", label:"Total beds", type:"number", value:100},
+    {key:"available_beds", label:"Available beds", type:"number", value:50},
+    {key:"has_er", label:"Has emergency room", type:"checkbox", value:true},
+  ], async (data) => {
+    await fetch(`${API_BASE}/hospitals`, {
+      method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({...data, operational:true})
+    });
+    loadHospitals();
+  });
+}
+
+async function deleteHospital(id, name){
+  if(!confirm(`Remove ${name}? This can't be undone.`)) return;
+  await fetch(`${API_BASE}/hospitals/${id}`, {method:"DELETE"});
+  loadHospitals();
+}
+
+// ============================================================
+// Shelters — list, edit, create, delete
+// ============================================================
+async function loadShelters(){
+  try{
+    const res = await fetch(`${API_BASE}/shelters`);
+    const shelters = await res.json();
+    document.getElementById("sheltersList").innerHTML = shelters.map(s => {
+      const pct = Math.min(100, Math.round((s.current_occupancy / s.capacity) * 100));
+      const full = pct >= 90;
+      return `
+        <div class="res-item">
+          <div class="res-top">
+            <div style="flex:1;">
+              <span class="res-name">${s.name}</span> ${!s.operational ? '<span class="cond-badge out_of_service">closed</span>':''}
+              <div class="shelter-bar-track"><div class="shelter-bar-fill ${full?'full':''}" style="width:${pct}%"></div></div>
+              <div class="shelter-nums mono">${s.current_occupancy} / ${s.capacity} occupied</div>
+            </div>
+            <div class="res-btns">
+              <button class="icon-btn" onclick='openShelterEditModal(${JSON.stringify(s)})' title="Edit">✎</button>
+              <button class="icon-btn danger" onclick="deleteShelter('${s.id}','${s.name.replace(/'/g,"")}')" title="Delete">🗑</button>
+            </div>
+          </div>
+        </div>
+      `;
+    }).join("");
+  }catch(e){
+    document.getElementById("sheltersList").innerHTML = `<div class="empty-state">Can't reach backend.</div>`;
+  }
+}
+
+function openShelterEditModal(s){
+  openModal(`Edit ${s.name}`, [
+    {key:"name", label:"Name", type:"text", value:s.name},
+    {key:"capacity", label:"Capacity", type:"number", value:s.capacity},
+    {key:"current_occupancy", label:"Current occupancy", type:"number", value:s.current_occupancy},
+    {key:"operational", label:"Currently open", type:"checkbox", value:s.operational},
+  ], async (data) => {
+    await fetch(`${API_BASE}/shelters/${s.id}`, {
+      method:"PATCH", headers:{"Content-Type":"application/json"}, body: JSON.stringify(data)
+    });
+    loadShelters();
+  });
+}
+
+function openShelterCreateModal(){
+  openModal("Add shelter", [
+    {key:"name", label:"Name", type:"text", value:""},
+    {key:"lat", label:"Latitude", type:"number", step:"0.0001", value:"27.7172"},
+    {key:"lng", label:"Longitude", type:"number", step:"0.0001", value:"85.3240"},
+    {key:"capacity", label:"Capacity", type:"number", value:100},
+    {key:"current_occupancy", label:"Current occupancy", type:"number", value:0},
+  ], async (data) => {
+    await fetch(`${API_BASE}/shelters`, {
+      method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(data)
+    });
+    loadShelters();
+  });
+}
+
+async function deleteShelter(id, name){
+  if(!confirm(`Remove ${name}? This can't be undone.`)) return;
+  await fetch(`${API_BASE}/shelters/${id}`, {method:"DELETE"});
+  loadShelters();
+}
+
+// ============================================================
+// Init
+// ============================================================
+loadIncidents();
+loadUnits();
+loadHospitals();
+loadShelters();
+setInterval(loadIncidents, 5000);
+setInterval(loadUnits, 8000);
+</script>
+
+</body>
+</html>

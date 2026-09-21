@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Incoming Evacuees — JALRAKSHYAK AI</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+
+  :root{
+    --bg:#0E1620; --card:#16212E; --raised:#1E2C3C; --line:#263646;
+    --ink:#E8EDF2; --muted:#7C8B9C;
+    --accent:#4FB6A8; --accent-dim:#2E6F66;
+    --critical:#E14B4B; --high:#E0972E; --moderate:#3E8FB0;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg); color:var(--ink);
+    font-family:'IBM Plex Sans', -apple-system, sans-serif;
+    min-height:100vh; -webkit-font-smoothing:antialiased;
+  }
+  .mono{font-family:'IBM Plex Mono', monospace;}
+
+  header{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:18px 28px; border-bottom:1px solid var(--line); background:var(--card); flex-wrap:wrap; gap:14px;
+  }
+  header h1{font-size:19px; font-weight:700; margin:0;}
+  header p{font-size:12px; color:var(--muted); margin:2px 0 0 0;}
+
+  select{
+    background:var(--raised); border:1px solid var(--line); color:var(--ink);
+    border-radius:5px; padding:9px 12px; font-family:inherit; font-size:13.5px; min-width:260px;
+  }
+
+  main{padding:24px 28px; max-width:820px; margin:0 auto;}
+
+  .empty-state{color:var(--muted); font-size:13.5px; padding:40px 0; text-align:center;}
+
+  .incoming-card{
+    background:var(--card); border:1px solid var(--line); border-left:4px solid var(--moderate);
+    border-radius:5px; padding:16px 18px; margin-bottom:12px;
+  }
+  .incoming-card.CRITICAL{border-left-color:var(--critical);}
+  .incoming-card.HIGH{border-left-color:var(--high);}
+  .incoming-card.MODERATE{border-left-color:var(--moderate);}
+
+  .ic-top{display:flex; justify-content:space-between; align-items:flex-start; gap:10px;}
+  .ic-loc{font-size:15px; font-weight:600;}
+  .ic-meta{font-size:11.5px; color:var(--muted); margin-top:3px;}
+  .sev-badge{font-size:11px; font-weight:600; padding:3px 8px; border-radius:2px;}
+  .sev-badge.CRITICAL{background:rgba(225,75,75,0.18); color:var(--critical);}
+  .sev-badge.HIGH{background:rgba(224,151,46,0.18); color:var(--high);}
+  .sev-badge.MODERATE{background:rgba(62,143,176,0.18); color:var(--moderate);}
+
+  .ic-detail{font-size:13px; color:#C4CDD6; margin:10px 0; line-height:1.5;}
+  .ic-unit{font-size:12.5px; color:var(--muted); margin-bottom:4px;}
+  .ic-unit b{color:var(--ink); font-weight:500;}
+  .status-pill{font-size:11px; padding:3px 9px; border-radius:10px; background:var(--raised); border:1px solid var(--line); margin-top:8px; display:inline-block;}
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>Incoming Evacuees</h1>
+    <p>JALRAKSHYAK AI — shelter view</p>
+  </div>
+  <select id="shelterSelect" onchange="onShelterChange()">
+    <option value="">Select your shelter...</option>
+  </select>
+</header>
+
+<main>
+  <div id="content"><div class="empty-state">Select your shelter above to see incoming evacuees.</div></div>
+</main>
+
+<script>
+const API_BASE = "http://127.0.0.1:8000";
+const SHELTER_KEY = "jalrakshyak_shelter_id";
+let pollTimer = null;
+
+async function loadShelters(){
+  try{
+    const res = await fetch(`${API_BASE}/shelters`);
+    const shelters = await res.json();
+    const sel = document.getElementById("shelterSelect");
+    sel.innerHTML = `<option value="">Select your shelter...</option>` +
+      shelters.map(s => `<option value="${s.id}">${s.name}</option>`).join("");
+
+    const saved = localStorage.getItem(SHELTER_KEY);
+    if(saved && shelters.some(s => s.id === saved)){
+      sel.value = saved;
+      onShelterChange();
+    }
+  }catch(e){
+    document.getElementById("content").innerHTML = `<div class="empty-state">Can't reach the command server.</div>`;
+  }
+}
+
+function onShelterChange(){
+  const id = document.getElementById("shelterSelect").value;
+  if(pollTimer) clearInterval(pollTimer);
+  if(!id){
+    document.getElementById("content").innerHTML = `<div class="empty-state">Select your shelter above to see incoming evacuees.</div>`;
+    return;
+  }
+  localStorage.setItem(SHELTER_KEY, id);
+  loadIncoming(id);
+  pollTimer = setInterval(() => loadIncoming(id), 5000);
+}
+
+async function loadIncoming(shelterId){
+  try{
+    const res = await fetch(`${API_BASE}/shelters/${shelterId}/incoming`);
+    const incidents = await res.json();
+    renderIncoming(incidents);
+  }catch(e){ /* keep trying silently */ }
+}
+
+function renderIncoming(entries){
+  const content = document.getElementById("content");
+  if(entries.length === 0){
+    content.innerHTML = `<div class="empty-state">No evacuees currently on the way. A unit appears here the moment it's loaded up and heading to you.</div>`;
+    return;
+  }
+  content.innerHTML = entries.map(e => {
+    const time = new Date(e.created_at).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+    return `
+      <div class="incoming-card ${e.severity}">
+        <div class="ic-top">
+          <div>
+            <div class="ic-loc">${e.location_label}</div>
+            <div class="ic-meta">${time} · ${e.disaster_type}</div>
+          </div>
+          <span class="sev-badge ${e.severity}">${e.severity}</span>
+        </div>
+        <div class="ic-detail">${e.severity_explanation}</div>
+        <div class="ic-unit"><b>${e.unit.name}</b> (${e.unit.type.replace('_',' ')}) — bringing <b>${e.headcount ?? '?'}</b> people</div>
+        <span class="status-pill">En route to you</span>
+      </div>
+    `;
+  }).join("");
+}
+
+loadShelters();
+</script>
+
+</body>
+</html>

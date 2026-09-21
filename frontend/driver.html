@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Unit Dispatch — JALRAKSHYAK AI</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+
+  :root{
+    --bg:#0E1620; --card:#16212E; --raised:#1E2C3C; --line:#263646;
+    --ink:#E8EDF2; --muted:#7C8B9C;
+    --accent:#4FB6A8; --accent-dim:#2E6F66;
+    --critical:#E14B4B; --high:#E0972E; --moderate:#3E8FB0;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg); color:var(--ink);
+    font-family:'IBM Plex Sans', -apple-system, sans-serif;
+    min-height:100vh; display:flex; justify-content:center;
+    -webkit-font-smoothing:antialiased;
+  }
+  .mono{font-family:'IBM Plex Mono', monospace;}
+
+  .phone{
+    width:100%; max-width:400px; min-height:100vh;
+    display:flex; flex-direction:column;
+  }
+  @media (min-width:460px){
+    .phone{ min-height:calc(100vh - 48px); margin:24px 0; border-radius:20px; box-shadow:0 20px 50px rgba(0,0,0,0.5); overflow:hidden; }
+  }
+
+  header{ padding:18px 20px; border-bottom:1px solid var(--line); background:var(--card); }
+  header h1{font-size:17px; margin:0 0 3px 0; font-weight:700;}
+  header p{font-size:12px; color:var(--muted); margin:0;}
+
+  main{flex:1; padding:18px 20px;}
+
+  .field{margin-bottom:14px;}
+  .field label{display:block; font-size:12px; color:var(--muted); margin-bottom:6px;}
+  select{
+    width:100%; background:var(--raised); border:1px solid var(--line); color:var(--ink);
+    border-radius:8px; padding:11px 12px; font-family:inherit; font-size:14px;
+  }
+
+  .standby{
+    text-align:center; padding:60px 20px; color:var(--muted);
+  }
+  .standby-dot{
+    width:10px; height:10px; border-radius:50%; background:var(--accent);
+    display:inline-block; margin-right:8px;
+    animation:pulse 1.6s infinite;
+  }
+  @keyframes pulse{ 0%{opacity:1;} 50%{opacity:0.3;} 100%{opacity:1;} }
+
+  .assign-card{
+    background:var(--card); border:1px solid var(--line); border-left:4px solid var(--moderate);
+    border-radius:8px; padding:16px;
+  }
+  .assign-card.CRITICAL{border-left-color:var(--critical);}
+  .assign-card.HIGH{border-left-color:var(--high);}
+  .assign-card.MODERATE{border-left-color:var(--moderate);}
+
+  .sev-badge{font-size:11px; font-weight:600; padding:3px 8px; border-radius:2px; letter-spacing:0.3px;}
+  .sev-badge.CRITICAL{background:rgba(225,75,75,0.18); color:var(--critical);}
+  .sev-badge.HIGH{background:rgba(224,151,46,0.18); color:var(--high);}
+  .sev-badge.MODERATE{background:rgba(62,143,176,0.18); color:var(--moderate);}
+
+  .assign-loc{font-size:16px; font-weight:700; margin:10px 0 4px 0;}
+  .assign-gps{font-size:11.5px; color:var(--muted); margin-bottom:12px;}
+  .assign-detail{font-size:13px; color:#C4CDD6; line-height:1.6; margin-bottom:12px;}
+  .assign-msg{
+    font-size:12.5px; background:rgba(79,182,168,0.1); border:1px solid var(--accent-dim);
+    border-radius:6px; padding:9px 11px; margin-bottom:14px;
+  }
+  .dest-line{font-size:12.5px; color:var(--muted); margin-bottom:6px;}
+  .dest-line b{color:var(--ink); font-weight:500;}
+
+  .status-btns{display:flex; flex-direction:column; gap:8px; margin-top:16px;}
+  .status-btns button{
+    padding:13px; border-radius:8px; border:none; font-family:inherit; font-size:14px;
+    font-weight:600; cursor:pointer;
+  }
+  .btn-enroute{background:var(--accent-dim); color:#fff;}
+  .btn-rescued{background:var(--accent); color:#0E1620;}
+
+  .current-status{
+    display:inline-block; font-size:11px; padding:4px 10px; border-radius:10px;
+    background:var(--raised); border:1px solid var(--line); margin-bottom:4px;
+  }
+
+  .map-frame{
+    width:100%; height:170px; border:1px solid var(--line); border-radius:8px;
+    overflow:hidden; margin:10px 0 12px 0; background:var(--raised);
+  }
+  .map-frame iframe{width:100%; height:100%; border:0;}
+  .map-link{font-size:11.5px; color:var(--accent); text-decoration:none; display:inline-block; margin-bottom:12px;}
+
+  .stage-track{display:flex; align-items:center; gap:4px; margin:12px 0 4px 0;}
+  .stage-dot{width:8px; height:8px; border-radius:50%; background:var(--line); flex-shrink:0;}
+  .stage-dot.done{background:var(--accent);}
+  .stage-line{flex:1; height:2px; background:var(--line);}
+  .stage-line.done{background:var(--accent);}
+</style>
+</head>
+<body>
+
+<div class="phone">
+  <header>
+    <h1>Unit Dispatch</h1>
+    <p>JALRAKSHYAK AI — driver / crew view</p>
+  </header>
+
+  <main>
+    <div class="field">
+      <label>Which unit are you?</label>
+      <select id="unitSelect" onchange="onUnitChange()">
+        <option value="">Select your unit...</option>
+      </select>
+    </div>
+
+    <div id="content">
+      <div class="standby" id="promptState">Select your unit above to see your current assignment.</div>
+    </div>
+  </main>
+</div>
+
+<script>
+const API_BASE = "http://127.0.0.1:8000";
+const UNIT_KEY = "jalrakshyak_driver_unit_id";
+let pollTimer = null;
+
+async function loadUnits(){
+  try{
+    const res = await fetch(`${API_BASE}/units`);
+    const units = await res.json();
+    const sel = document.getElementById("unitSelect");
+    sel.innerHTML = `<option value="">Select your unit...</option>` +
+      units.map(u => `<option value="${u.id}">${u.name} (${u.type.replace('_',' ')})</option>`).join("");
+
+    const saved = localStorage.getItem(UNIT_KEY);
+    if(saved && units.some(u => u.id === saved)){
+      sel.value = saved;
+      onUnitChange();
+    }
+  }catch(e){
+    document.getElementById("content").innerHTML = `<div class="standby">Can't reach the command server.</div>`;
+  }
+}
+
+function onUnitChange(){
+  const id = document.getElementById("unitSelect").value;
+  if(pollTimer) clearInterval(pollTimer);
+  if(!id){
+    document.getElementById("content").innerHTML = `<div class="standby" id="promptState">Select your unit above to see your current assignment.</div>`;
+    return;
+  }
+  localStorage.setItem(UNIT_KEY, id);
+  checkAssignment(id);
+  pollTimer = setInterval(() => checkAssignment(id), 4000);
+}
+
+async function checkAssignment(unitId){
+  try{
+    const res = await fetch(`${API_BASE}/units/${unitId}/assignment`);
+    if(!res.ok) return;
+    const inc = await res.json();
+    renderAssignment(inc, unitId);
+  }catch(e){ /* keep trying silently */ }
+}
+
+function renderAssignment(inc, unitId){
+  const content = document.getElementById("content");
+  if(!inc || !inc.my_dispatch){
+    content.innerHTML = `<div class="standby"><span class="standby-dot"></span>No active assignment — standing by.</div>`;
+    return;
+  }
+
+  const myStatus = inc.my_dispatch.status;
+  const dispatchId = inc.my_dispatch.id;
+
+  // Find this unit's own dispatch entry (for its type + its own committed destination)
+  const myFullDispatch = (inc.dispatches || []).find(d => d.id === dispatchId) || {};
+  const myUnitType = myFullDispatch.unit ? myFullDispatch.unit.type : "";
+
+  // Report-level hospital/shelter = the commander's PLAN (a default suggestion).
+  // Once this unit commits (Transporting), its OWN destination is authoritative —
+  // shown separately so two units on one incident never get confused for each other.
+  const destLines = [];
+  if(myStatus === "Transporting" || myStatus === "Complete"){
+    if(myFullDispatch.destination_hospital) destLines.push(`<div class="dest-line">Taking patients to: <b>${myFullDispatch.destination_hospital.name}</b></div>`);
+    if(myFullDispatch.destination_shelter) destLines.push(`<div class="dest-line">Taking evacuees to: <b>${myFullDispatch.destination_shelter.name}</b></div>`);
+  } else {
+    if(inc.destination_hospital) destLines.push(`<div class="dest-line">Suggested hospital: <b>${inc.destination_hospital.name}</b></div>`);
+    if(inc.destination_shelter) destLines.push(`<div class="dest-line">Suggested shelter: <b>${inc.destination_shelter.name}</b></div>`);
+  }
+
+  const msgLine = inc.commander_message
+    ? `<div class="assign-msg">Commander: "${inc.commander_message}"</div>`
+    : "";
+
+  const headcountLine = inc.my_dispatch.headcount != null
+    ? `<div class="dest-line">Bringing: <b>${inc.my_dispatch.headcount}</b> people</div>`
+    : "";
+
+  // Small map centered on the victim's location, no API key needed
+  const d = 0.006;
+  const bbox = `${inc.lng-d},${inc.lat-d},${inc.lng+d},${inc.lat+d}`;
+  const mapUrl = `https://www.openstreetmap.org/export/embed.html?bbox=${bbox}&layer=mapnik&marker=${inc.lat},${inc.lng}`;
+  const mapLinkUrl = `https://www.openstreetmap.org/?mlat=${inc.lat}&mlon=${inc.lng}#map=16/${inc.lat}/${inc.lng}`;
+
+  // 4-stage progress: Assigned -> En Route -> Transporting -> Complete
+  const stageIndex = {Assigned:0, "En Route":1, Transporting:2, Complete:3}[myStatus] ?? 0;
+  const stageTrack = `
+    <div class="stage-track">
+      <span class="stage-dot ${stageIndex>=0?'done':''}"></span>
+      <span class="stage-line ${stageIndex>=1?'done':''}"></span>
+      <span class="stage-dot ${stageIndex>=1?'done':''}"></span>
+      <span class="stage-line ${stageIndex>=2?'done':''}"></span>
+      <span class="stage-dot ${stageIndex>=2?'done':''}"></span>
+    </div>
+  `;
+
+  const hospId = inc.destination_hospital ? inc.destination_hospital.id : "";
+  const hospName = inc.destination_hospital ? inc.destination_hospital.name : "";
+  const shelId = inc.destination_shelter ? inc.destination_shelter.id : "";
+  const shelName = inc.destination_shelter ? inc.destination_shelter.name : "";
+
+  let nextButtons;
+  if(myStatus === "Assigned"){
+    nextButtons = `<div class="status-btns"><button class="btn-enroute" onclick="updateDispatch('${dispatchId}','${unitId}','En Route')">On the way to victim</button></div>`;
+  } else if(myStatus === "En Route"){
+    // Match the SAME decision logic used when actually saving the
+    // destination (see markLoaded below) — otherwise the button can say
+    // "heading to hospital" for a boat/relief team that's actually about
+    // to be sent to the shelter, which is exactly the bug this fixes.
+    const willUseHospital = (myUnitType === "ambulance" && inc.destination_hospital)
+      || (!inc.destination_shelter && inc.destination_hospital);
+    const loadedLabel = willUseHospital ? "Loaded — heading to hospital"
+      : inc.destination_shelter ? "Loaded — heading to shelter"
+      : "Loaded — transporting";
+    nextButtons = `<div class="status-btns"><button class="btn-enroute" onclick="markLoaded('${dispatchId}','${unitId}','${myUnitType}','${hospId}','${hospName.replace(/'/g,"")}','${shelId}','${shelName.replace(/'/g,"")}')">${loadedLabel}</button></div>`;
+  } else if(myStatus === "Transporting"){
+    nextButtons = `<div class="status-btns"><button class="btn-rescued" onclick="updateDispatch('${dispatchId}','${unitId}','Complete')">Mark Delivered / Complete</button></div>`;
+  } else {
+    nextButtons = "";
+  }
+
+  content.innerHTML = `
+    <div class="assign-card ${inc.severity}">
+      <span class="current-status mono">${myStatus}</span>
+      <span class="sev-badge ${inc.severity}" style="float:right;">${inc.severity}</span>
+      <div class="assign-loc">${inc.location_label}</div>
+      <div class="assign-gps mono">${inc.lat.toFixed(4)}, ${inc.lng.toFixed(4)}</div>
+      <div class="map-frame"><iframe src="${mapUrl}" loading="lazy"></iframe></div>
+      <a class="map-link" href="${mapLinkUrl}" target="_blank">Open in Maps for directions ↗</a>
+      <div class="assign-detail">${inc.severity_explanation}</div>
+      ${destLines.join("")}
+      ${headcountLine}
+      ${msgLine}
+      ${stageTrack}
+      ${nextButtons}
+    </div>
+  `;
+}
+
+function markLoaded(dispatchId, unitId, unitType, hospId, hospName, shelId, shelName){
+  const input = prompt("How many people are you bringing?");
+  if(input === null) return; // cancelled
+  const n = parseInt(input);
+  const headcount = isNaN(n) ? null : n;
+
+  // Decide THIS unit's own destination — an ambulance defaults to the
+  // hospital, a boat/relief team defaults to the shelter, each independent
+  // of what any other unit on the same incident is doing.
+  let destHospId = null, destShelId = null;
+  if(unitType === "ambulance" && hospId){
+    destHospId = hospId;
+  } else if(shelId){
+    destShelId = shelId;
+  } else if(hospId){
+    destHospId = hospId;
+  }
+
+  updateDispatch(dispatchId, unitId, "Transporting", headcount, destHospId, destShelId);
+}
+
+async function updateDispatch(dispatchId, unitId, status, headcount, hospitalId, shelterId){
+  const body = { status };
+  if(headcount !== undefined && headcount !== null) body.headcount = headcount;
+  if(hospitalId) body.hospital_id = hospitalId;
+  if(shelterId) body.shelter_id = shelterId;
+  await fetch(`${API_BASE}/dispatches/${dispatchId}/status`, {
+    method:"PATCH", headers:{"Content-Type":"application/json"}, body: JSON.stringify(body)
+  });
+  checkAssignment(unitId);
+}
+
+loadUnits();
+</script>
+
+</body>
+</html>
